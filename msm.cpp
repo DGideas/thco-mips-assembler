@@ -1,7 +1,7 @@
 // THCO-MIPS二进制编译器
 // 王万霖 dgideas@outlook.com
 // 2017年6月
-// g++ 1.cpp -o 1 --std=c++14
+// g++ 1.cpp -o 1 --std=c++11
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -18,7 +18,7 @@ void errorExit(const string& _reason = "")
 {
 	if (!_reason.empty())
 	{
-		cout<<"编译错误: "<<_reason;
+		cout<<"错误: "<<_reason;
 	}
 	else
 	{
@@ -79,11 +79,20 @@ string hexToBin(string _hex, const int& _length)
 		{
 			string tmp(_length-res.size(), '0');
 			res = tmp + res;
+			cout<<"(2001)数据精度不足警告: 在数据"<<_hex<<"中, 由于位数不足"
+				<<_length<<"位, 将以0补足."<<endl;
 		}
 		else
 		{
 			res = res.substr(res.size()-_length);
+			cout<<"(2002)数据长度警告: 在数据"<<_hex<<"中, 由于位数大于"
+				<<_length<<"位,可能会丢失精度."<<endl;
 		}
+	}
+	else if(_hex.size()*4 > _length)
+	{
+		cout<<"(2002)数据长度警告: 在数据"<<_hex<<"中, 由于位数大于"
+			<<_length<<"位,可能会丢失精度."<<endl;
 	}
 	return res;
 }
@@ -155,6 +164,10 @@ string rx(const string& _regFileNumber)
 	else if(_regFileNumber == "r7")
 	{
 		return "111";
+	}
+	else
+	{
+		errorExit("(1002)寄存器错误: 未知的寄存器名" + _regFileNumber);
 	}
 }
 
@@ -345,14 +358,14 @@ string translate(const vector<string>& _ins)
 	}
 	else
 	{
-		errorExit(_ins[0]+": 没有该指令");
+		errorExit("(1001)指令错误: 未知的指令" + _ins[0]);
 	}
 	return res;
 }
 
 vector<string> split(const string& _res)
 {
-	vector<char> blank = {'\t', ' '};
+	vector<char> blank = {'\t', ' ', '\r', '\n'};
 	vector<char> avoidPreffix = {'.', ';', '#'};
 	vector<string> res;
 	string cache = "";
@@ -423,11 +436,16 @@ int main(int argc, char* argv[])
 		string line;
 		while (getline(mipsFile, line))
 		{
-			if (DEBUG)
+			vector<string> splitedInstruction = split(strToLower(line));
+			if (splitedInstruction.size())
 			{
-				cout<<line<<"\t"<<translate(split(strToLower(line)))<<endl;
+				string res = translate(splitedInstruction);
+				if (DEBUG)
+				{
+					cout<<line<<"\t"<<res<<endl;
+				}
+				resFile<<toBin(res);
 			}
-			resFile<<toBin(translate(split(strToLower(line))));
 		}
 	}
 	return 0;
